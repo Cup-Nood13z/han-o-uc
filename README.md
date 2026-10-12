@@ -1,69 +1,51 @@
-# Han o Uc
+# Hân ở Úc
 
-A bright, mobile-first product catalogue for Vercel. Customers can browse categories, search products, view sale/preorder labels and contact you. The `/admin` page lets you add/delete categories and add/edit/delete products, pricing, images, descriptions, preorder notes and sale dates.
+Website trưng bày sản phẩm bằng tiếng Việt, tối ưu cho điện thoại, tablet và máy tính. Giao diện mới lấy cảm hứng từ cách Chemist Warehouse tổ chức tìm kiếm, danh mục, banner và thẻ sản phẩm nhưng được thiết kế riêng theo màu sắc/logo Hân ở Úc.
 
-## Stack
-- Next.js App Router
-- Supabase database + admin authentication + product-image storage
-- Vercel hosting
-- Responsive layout for phones, tablets and desktop
+## Tính năng chính
+- Giao diện chỉ dùng tiếng Việt
+- Thanh slogan + tìm kiếm lớn, dễ dùng
+- Carousel khuyến mãi tự chạy
+- Danh mục sản phẩm và thương hiệu
+- Lưu sản phẩm yêu thích trên thiết bị
+- Giỏ hàng, tăng/giảm số lượng và tổng tạm tính
+- Trang chi tiết sản phẩm với nút thêm vào giỏ
+- Giá thường, giá sale, sale sắp tới và preorder
+- Footer có số điện thoại, Facebook và thông tin sở hữu website
+- Logo Hân ở Úc dùng ở header, footer và favicon/tab icon
+- Trang `/admin` bằng tiếng Việt để quản lý sản phẩm và danh mục
 
-## 1. Create Supabase
-1. Create a free Supabase project.
-2. Open **SQL Editor** and run `supabase/schema.sql`.
-3. Go to **Authentication > Users** and create your admin user manually.
-4. In **Authentication settings**, keep public/self sign-up disabled so random visitors cannot become admins.
-5. From **Project Settings > API**, copy the Project URL and anon/public key.
-
-## 2. Configure locally
-Copy `.env.example` to `.env.local` and enter:
+## Biến môi trường
+Dùng các biến sau ở `.env.local` và trong **Vercel > Environment Variables**:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 NEXT_PUBLIC_STORE_CURRENCY=AUD
 NEXT_PUBLIC_CONTACT_URL=https://m.me/YOUR_PAGE
+NEXT_PUBLIC_FACEBOOK_URL=https://www.facebook.com/YOUR_PAGE
+NEXT_PUBLIC_CONTACT_PHONE=YOUR_PHONE_NUMBER
 ```
 
-`NEXT_PUBLIC_CONTACT_URL` can be Messenger, Facebook, Instagram, WhatsApp, a preorder form, etc.
+- `NEXT_PUBLIC_CONTACT_URL`: link mở khi khách bấm liên hệ đặt hàng.
+- `NEXT_PUBLIC_FACEBOOK_URL`: link Facebook hiển thị ở cuối website.
+- `NEXT_PUBLIC_CONTACT_PHONE`: số điện thoại hiển thị ở cuối website.
 
-Then:
-
+## Chạy trên máy
 ```bash
 npm install
 npm run dev
 ```
 
-Open:
-- Shop: `http://localhost:3000`
-- Admin: `http://localhost:3000/admin`
+Mở:
+- Cửa hàng: `http://localhost:3000`
+- Quản trị: `http://localhost:3000/admin`
 
-## 3. Deploy on Vercel
-1. Put this project in a GitHub repository.
-2. In Vercel: **Add New > Project** and import the repository.
-3. Add the same environment variables from `.env.local`.
-4. Deploy.
-5. Add your custom domain in **Vercel > Project > Settings > Domains**.
+## Đưa lên Vercel
+1. Chép các file mới vào thư mục repo GitHub Desktop của bạn.
+2. Trong GitHub Desktop: **Commit to main** rồi **Push origin**.
+3. Vercel sẽ tự động tạo deployment mới từ branch `main`.
+4. Kiểm tra các Environment Variables bên trên đã có trong Vercel.
 
-## What the admin can manage
-- Categories + category emoji
-- Product name and brand
-- Normal price and sale price
-- Short + full description
-- Product image upload
-- Preorder-only switch + preorder note
-- Upcoming sale start/end time
-- Featured switch
-- Hide/show product
-- Edit and permanently delete products
-
-## Easy future upgrades
-- Shopping cart + checkout
-- AUD/VND price toggle
-- Vietnamese + English language switch
-- Order form saved to Supabase
-- Customer accounts
-- Inventory/stock quantity
-- Sale countdown timer
-- Facebook/Instagram product links
-- CSV product import
+## Supabase
+Cấu trúc database hiện tại vẫn dùng được. Không cần chạy SQL mới cho các tính năng yêu thích và giỏ hàng vì chúng được lưu trên thiết bị của khách bằng localStorage.
