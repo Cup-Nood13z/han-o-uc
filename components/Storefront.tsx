@@ -117,18 +117,19 @@ export default function Storefront() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('han-o-uc-cart', JSON.stringify(cart));
-  }, [cart]);
+    const count = promotions.length || 1;
 
-  useEffect(() => {
-    if (promoSlides.length <= 1) return;
+    if (count <= 1) {
+      setSlide(0);
+      return;
+    }
 
     const timer = window.setInterval(() => {
-      setSlide(v => (v + 1) % promoSlides.length);
+      setSlide(v => (v + 1) % count);
     }, 5000);
 
     return () => window.clearInterval(timer);
-  }, [promoSlides.length]);
+  }, [promotions.length]);
 
   const filtered = useMemo(() => products.filter((p) => {
     const q = query.toLowerCase().trim();
