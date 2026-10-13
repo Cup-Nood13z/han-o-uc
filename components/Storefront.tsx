@@ -58,6 +58,7 @@ export default function Storefront() {
   const [products, setProducts] = useState<Product[]>(fallbackProducts);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('all');
+  const [brand, setBrand] = useState('all');
   
   const [brands, setBrands] = useState<Brand[]>([]);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
@@ -140,13 +141,9 @@ export default function Storefront() {
     return matchesSearch && matchesCat && matchesBrand;
   }), [products, query, category, brand]);
 
-  const upcoming = products.filter(p => saleStatus(p) === 'upcoming').length;
-  const preorder = products.filter(p => p.is_preorder).length;
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
   const cartTotal = cart.reduce((sum, item) => sum + productPrice(item.product) * item.quantity, 0);
-  const contactUrl = process.env.NEXT_PUBLIC_CONTACT_URL || process.env.NEXT_PUBLIC_FACEBOOK_URL || '#';
-  const facebookUrl = process.env.NEXT_PUBLIC_FACEBOOK_URL || contactUrl;
-  const contactPhone = process.env.NEXT_PUBLIC_CONTACT_PHONE || 'Đang cập nhật';
+
 
   const promoSlides =
     promotions.length > 0
@@ -209,7 +206,16 @@ export default function Storefront() {
     <main id="top">
       <section className="promoWrap container" aria-label="Khuyến mãi nổi bật">
         <div className="promoCarousel">
-          <button className="carouselArrow left" onClick={()=>setSlide(v=>(v+2)%3)} aria-label="Khuyến mãi trước"><ChevronLeft/></button>
+          <button
+            className="carouselArrow left"
+            onClick={() =>
+              setSlide(v =>
+                (v - 1 + promoSlides.length) % promoSlides.length
+              )
+            }
+          >
+            <ChevronLeft/>
+          </button>
           <div className="promoCopy">
             <h1>{promoSlides[slide].title}</h1>
 
@@ -232,8 +238,25 @@ export default function Storefront() {
           </button>
 
           </div>
-          <div className="promoVisual"><img src="/han-o-uc-logo.png" alt="Hân ở Úc"/></div>
-          <button className="carouselArrow right" onClick={()=>setSlide(v=>(v+1)%3)} aria-label="Khuyến mãi tiếp theo"><ChevronRight/></button>
+          <div className="promoVisual">
+            <img
+              src={
+                promoSlides[slide].image_url ||
+                '/han-o-uc-logo.png'
+              }
+              alt={promoSlides[slide].title}
+            />
+          </div>
+          <button
+            className="carouselArrow right"
+            onClick={() =>
+              setSlide(v =>
+                (v + 1) % promoSlides.length
+              )
+            }
+          >
+            <ChevronRight/>
+          </button>
           <div className="carouselDots">{promoSlides.map((_,i)=><button key={i} className={i===slide?'active':''} onClick={()=>setSlide(i)} aria-label={`Khuyến mãi ${i+1}`}/>)}</div>
         </div>
       </section>
@@ -298,7 +321,13 @@ export default function Storefront() {
           key={`${category}-${brand}`}
           className="productsGrid productsSlide"
         >
-          {filtered.length===0 && <div className="emptyState"><Heart size={34}/><h3>Chưa có sản phẩm phù hợp</h3><p>Thử từ khóa khác hoặc chọn “Tất cả sản phẩm”.</p></div>}
+          {filtered.length === 0 && (
+            <div className="emptyState">
+              <Search size={34}/>
+              <h3>Chưa có sản phẩm phù hợp</h3>
+              <p>Thử từ khóa khác hoặc chọn “Tất cả sản phẩm”.</p>
+            </div>
+          )}
           {filtered.map(p=>{
             const status=saleStatus(p);
             const liveSale=status==='live';
@@ -337,9 +366,10 @@ export default function Storefront() {
         <div>
           <h3>Liên hệ</h3>
 
-          <p>
-            <Phone size={16} /> {contactPhone}
-          </p>
+          <a href="tel:+84385238442" className="footerPhone">
+            <Phone size={16} />
+            0385 238 442
+          </a>
 
           <a
             href="https://www.facebook.com/profile.php?id=61595110472982"
@@ -393,7 +423,16 @@ export default function Storefront() {
             <button className="removeCart" onClick={()=>setCart(items=>items.filter(i=>i.product.id!==item.product.id))}><X size={17}/></button>
           </div>)}
         </div>
-        {cart.length>0&&<div className="cartFooter"><div className="cartTotal"><span>Tạm tính</span><strong>{fmt(cartTotal)}</strong></div><p>Giỏ hàng dùng để lưu sản phẩm. Hân sẽ xác nhận giá, phí vận chuyển và đơn hàng khi bạn liên hệ.</p><a className="checkoutContact" href={contactUrl} target={contactUrl==='#'?undefined:'_blank'} rel="noreferrer">LIÊN HỆ ĐẶT HÀNG <ChevronRight size={19}/></a><button className="clearCart" onClick={()=>setCart([])}>Xóa giỏ hàng</button></div>}
+        {cart.length>0&&<div className="cartFooter"><div className="cartTotal"><span>Tạm tính</span><strong>{fmt(cartTotal)}</strong></div><p>Giỏ hàng dùng để lưu sản phẩm. Hân sẽ xác nhận giá, phí vận chuyển và đơn hàng khi bạn liên hệ.</p>
+        <a
+          className="checkoutContact"
+          href="/checkout"
+          onClick={() => setCartOpen(false)}
+        >
+          ĐẶT HÀNG
+          <ChevronRight size={19}/>
+        </a>
+        <button className="clearCart" onClick={()=>setCart([])}>Xóa giỏ hàng</button></div>}
       </aside>
     </div>}
   </>;
