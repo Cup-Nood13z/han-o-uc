@@ -5,19 +5,19 @@ import {
   ChevronLeft,
   ChevronRight,
   Facebook,
-  Heart,
   Menu,
   Minus,
   Phone,
   Plus,
   Search,
-  ShieldCheck,
   ShoppingCart,
-  Sparkles,
   X,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase-browser';
-import type { Category, Product } from '@/lib/types';
+import type { Brand, Category, Product, Promotion } from '@/lib/types';
+
+const [brands, setBrands] = useState<Brand[]>([]);
+const [promotions, setPromotions] = useState<Promotion[]>([]);
 
 const fallbackCategories: Category[] = [
   { id: 'c1', name: 'Thực phẩm chức năng', slug: 'vitamins', emoji: '🍊', sort_order: 1 },
@@ -63,8 +63,6 @@ export default function Storefront() {
   const [brand, setBrand] = useState('all');
   const [selected, setSelected] = useState<Product | null>(null);
   const [usingDemo, setUsingDemo] = useState(true);
-  const [favorites, setFavorites] = useState<string[]>([]);
-  const [showFavorites, setShowFavorites] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -72,50 +70,74 @@ export default function Storefront() {
 
   useEffect(() => {
     try {
-      const savedFav = JSON.parse(localStorage.getItem('han-o-uc-favorites') || '[]');
       const savedCart = JSON.parse(localStorage.getItem('han-o-uc-cart') || '[]');
-      if (Array.isArray(savedFav)) setFavorites(savedFav);
       if (Array.isArray(savedCart)) setCart(savedCart);
     } catch {}
 
     const supabase = createClient();
     if (!supabase) return;
     (async () => {
-      const [{ data: cats }, { data: prods }] = await Promise.all([
-        supabase.from('categories').select('*').order('sort_order'),
-        supabase.from('products').select('*, category:categories(*)').eq('is_active', true).order('created_at', { ascending:false })
+      const [
+        { data: cats },
+        { data: prods },
+        { data: brandData },
+        { data: promoData }
+      ] = await Promise.all([
+        supabase
+          .from('categories')
+          .select('*')
+          .order('sort_order'),
+
+        supabase
+          .from('products')
+          .select('*, category:categories(*)')
+          .eq('is_active', true)
+          .order('created_at', { ascending:false }),
+
+        supabase
+          .from('brands')
+          .select('*')
+          .eq('is_active', true)
+          .order('sort_order'),
+
+        supabase
+          .from('promotions')
+          .select('*')
+          .eq('is_active', true)
+          .order('sort_order')
       ]);
       if (cats && prods) {
         setCategories(cats as Category[]);
         setProducts(prods as Product[]);
+        setBrands((brandData || []) as Brand[]);
+        setPromotions((promoData || []) as Promotion[]);
         setUsingDemo(false);
       }
     })();
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('han-o-uc-favorites', JSON.stringify(favorites));
-  }, [favorites]);
-
-  useEffect(() => {
     localStorage.setItem('han-o-uc-cart', JSON.stringify(cart));
   }, [cart]);
 
   useEffect(() => {
-    const timer = window.setInterval(() => setSlide(v => (v + 1) % 3), 5000);
-    return () => window.clearInterval(timer);
-  }, []);
+    if (promoSlides.length <= 1) return;
 
-  const brands = useMemo(() => Array.from(new Set(products.map(p => p.brand?.trim()).filter(Boolean) as string[])).sort(), [products]);
+    const timer = window.setInterval(() => {
+      setSlide(v => (v + 1) % promoSlides.length);
+    }, 5000);
+
+    return () => window.clearInterval(timer);
+  }, [promoSlides.length]);
 
   const filtered = useMemo(() => products.filter((p) => {
     const q = query.toLowerCase().trim();
     const matchesSearch = !q || [p.name,p.brand,p.short_description,p.description].filter(Boolean).some(x => String(x).toLowerCase().includes(q));
     const matchesCat = category === 'all' || p.category_id === category;
     const matchesBrand = brand === 'all' || p.brand === brand;
-    const matchesFav = !showFavorites || favorites.includes(p.id);
-    return matchesSearch && matchesCat && matchesBrand && matchesFav;
-  }), [products, query, category, brand, showFavorites, favorites]);
+   
+    return matchesSearch && matchesCat && matchesBrand;
+  }), [products, query, category, brand]);
 
   const upcoming = products.filter(p => saleStatus(p) === 'upcoming').length;
   const preorder = products.filter(p => p.is_preorder).length;
@@ -125,31 +147,20 @@ export default function Storefront() {
   const facebookUrl = process.env.NEXT_PUBLIC_FACEBOOK_URL || contactUrl;
   const contactPhone = process.env.NEXT_PUBLIC_CONTACT_PHONE || 'Đang cập nhật';
 
-  const promoSlides = [
-    {
-      eyebrow: 'HÀNG ÚC CHÍNH HÃNG 🇦🇺',
-      title: 'Săn sale Úc, mua dễ hơn mỗi ngày',
-      text: 'Thực phẩm chức năng • Sữa • Skincare • Beauty • Thời trang',
-      action: 'XEM SẢN PHẨM',
-      cls: 'promoPink',
-    },
-    {
-      eyebrow: 'SALE SẮP TỚI',
-      title: upcoming ? `${upcoming} ưu đãi đang chờ bạn` : 'Ưu đãi mới sẽ được cập nhật tại đây',
-      text: 'Theo dõi giá sale và thời gian áp dụng ngay trên từng sản phẩm.',
-      action: 'XEM ƯU ĐÃI',
-      cls: 'promoBlue',
-    },
-    {
-      eyebrow: 'ĐẶT TRƯỚC',
-      title: preorder ? `${preorder} sản phẩm đang nhận preorder` : 'Đặt trước hàng Úc thật đơn giản',
-      text: 'Xem thông tin, thêm vào giỏ rồi liên hệ Hân để chốt đơn.',
-      action: 'XEM PREORDER',
-      cls: 'promoYellow',
-    }
-  ];
-
-  const toggleFavorite = (id: string) => setFavorites(list => list.includes(id) ? list.filter(x => x !== id) : [...list, id]);
+  const promoSlides =
+    promotions.length > 0
+      ? promotions
+      : [
+          {
+            id: 'default-1',
+            title: 'Săn sale Úc, mua dễ hơn mỗi ngày',
+            subtitle:
+              'Thực phẩm chức năng • Sữa • Skincare • Beauty',
+            button_text: 'XEM SẢN PHẨM',
+            image_url: '/han-o-uc-logo.png',
+            link_url: '#products'
+          }
+        ];
 
   const addToCart = (product: Product) => {
     setCart(items => {
@@ -180,9 +191,6 @@ export default function Storefront() {
           {query && <button onClick={()=>setQuery('')} aria-label="Xóa tìm kiếm"><X size={18}/></button>}
         </div>
         <div className="navButtons">
-          <button className={`navIconButton ${showFavorites ? 'active':''}`} onClick={()=>{setShowFavorites(v=>!v); scrollProducts();}} aria-label="Sản phẩm yêu thích">
-            <Heart size={22} fill={showFavorites ? 'currentColor':'none'}/><span>Yêu thích</span>{favorites.length>0&&<b>{favorites.length}</b>}
-          </button>
           <button className="navIconButton" onClick={()=>setCartOpen(true)} aria-label="Giỏ hàng">
             <ShoppingCart size={23}/><span>Giỏ hàng</span>{cartCount>0&&<b>{cartCount}</b>}
           </button>
@@ -199,13 +207,29 @@ export default function Storefront() {
 
     <main id="top">
       <section className="promoWrap container" aria-label="Khuyến mãi nổi bật">
-        <div className={`promoCarousel ${promoSlides[slide].cls}`}>
+        <div className="promoCarousel">
           <button className="carouselArrow left" onClick={()=>setSlide(v=>(v+2)%3)} aria-label="Khuyến mãi trước"><ChevronLeft/></button>
           <div className="promoCopy">
-            <span>{promoSlides[slide].eyebrow}</span>
             <h1>{promoSlides[slide].title}</h1>
-            <p>{promoSlides[slide].text}</p>
-            <button onClick={scrollProducts}>{promoSlides[slide].action} <ChevronRight size={18}/></button>
+
+            {promoSlides[slide].subtitle && (
+              <p>{promoSlides[slide].subtitle}</p>
+            )}
+          <button
+            onClick={() => {
+              const url = promoSlides[slide].link_url;
+
+              if (!url || url === '#products') {
+                scrollProducts();
+              } else {
+                window.location.href = url;
+              }
+            }}
+          >
+            {promoSlides[slide].button_text || 'XEM NGAY'}
+            <ChevronRight size={18}/>
+          </button>
+
           </div>
           <div className="promoVisual"><img src="/han-o-uc-logo.png" alt="Hân ở Úc"/></div>
           <button className="carouselArrow right" onClick={()=>setSlide(v=>(v+1)%3)} aria-label="Khuyến mãi tiếp theo"><ChevronRight/></button>
@@ -213,48 +237,74 @@ export default function Storefront() {
         </div>
       </section>
 
-      <section className="trustStrip">
-        <div className="container trustStripInner">
-          <span><ShieldCheck size={18}/> Hàng mua trực tiếp tại Úc</span>
-          <span><Sparkles size={18}/> Cập nhật sale thường xuyên</span>
-          <span>📦 Có sản phẩm preorder</span>
-          <span>💬 Hỗ trợ bằng tiếng Việt</span>
-        </div>
-      </section>
+      {brands.length > 0 && (
+        <section className="container brandsSection">
+          <div className="brandPanel">
+            <div className="compactHeading">
+              <div>
+                <span>THƯƠNG HIỆU</span>
+                <h2>Chọn theo thương hiệu</h2>
+              </div>
 
-      {brands.length>0 && <section className="container brandsSection">
-        <div className="compactHeading"><div><span>THƯƠNG HIỆU</span><h2>Chọn theo thương hiệu</h2></div><button onClick={()=>setBrand('all')}>Xem tất cả</button></div>
-        <div className="brandScroller">
-          <button className={`brandPill ${brand==='all'?'active':''}`} onClick={()=>{setBrand('all');scrollProducts();}}>Tất cả</button>
-          {brands.map(b=><button key={b} className={`brandPill ${brand===b?'active':''}`} onClick={()=>{setBrand(b);scrollProducts();}}>{b}</button>)}
-        </div>
-      </section>}
+              <button
+                onClick={() => {
+                  setBrand('all');
+                  scrollProducts();
+                }}
+              >
+                Xem tất cả
+              </button>
+            </div>
+
+            <div className="brandLogoScroller">
+              {brands.map(b => (
+                <button
+                  key={b.id}
+                  className={`brandLogoButton ${
+                    brand === b.name ? 'active' : ''
+                  }`}
+                  onClick={() => {
+                    setBrand(b.name);
+                    scrollProducts();
+                  }}
+                >
+                  {b.logo_url ? (
+                    <img src={b.logo_url} alt={b.name}/>
+                  ) : (
+                    <span>{b.name}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className="container productsSection" id="products">
         <div className="productsHeading">
           <div>
             <span className="eyebrow">MUA SẮM DỄ DÀNG</span>
-            <h2>{showFavorites ? 'Sản phẩm bạn đã yêu thích' : 'Sản phẩm nổi bật'}</h2>
+            <h2>Sản phẩm nổi bật</h2>
             <p>{filtered.length} sản phẩm</p>
           </div>
-          {showFavorites && <button className="clearFilter" onClick={()=>setShowFavorites(false)}>Hiện tất cả</button>}
         </div>
 
         <div className="mobileSearch">
           <Search size={20}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Tìm sản phẩm..."/>
         </div>
 
-        <div className="productsGrid">
+        <div
+          key={`${category}-${brand}`}
+          className="productsGrid productsSlide"
+        >
           {filtered.length===0 && <div className="emptyState"><Heart size={34}/><h3>Chưa có sản phẩm phù hợp</h3><p>Thử từ khóa khác hoặc chọn “Tất cả sản phẩm”.</p></div>}
           {filtered.map(p=>{
             const status=saleStatus(p);
             const liveSale=status==='live';
             const displayPrice=productPrice(p);
-            const saved=favorites.includes(p.id);
             return <article className="shopProductCard" key={p.id}>
               <div className="shopImage">
                 {p.image_url ? <img src={p.image_url} alt={p.name}/> : <div className="shopPlaceholder">🛍️</div>}
-                <button className={`heartButton ${saved?'saved':''}`} onClick={()=>toggleFavorite(p.id)} aria-label={saved?'Bỏ yêu thích':'Thêm vào yêu thích'}><Heart size={20} fill={saved?'currentColor':'none'}/></button>
                 <div className="productBadges">
                   {p.is_preorder&&<span className="badge preorderBadge">PREORDER</span>}
                   {status==='upcoming'&&<span className="badge soonBadge">SALE SẮP TỚI</span>}
@@ -283,10 +333,25 @@ export default function Storefront() {
     <footer className="siteFooter">
       <div className="container footerGrid">
         <div className="footerBrand"><img src="/han-o-uc-logo.png" alt="Hân ở Úc"/><div><strong>Hân ở Úc</strong><p>Hàng Úc chính hãng • Săn sale • Gửi về Việt Nam</p></div></div>
-        <div><h3>Liên hệ</h3><p><Phone size={16}/> {contactPhone}</p><a href={facebookUrl} target={facebookUrl==='#'?undefined:'_blank'} rel="noreferrer"><Facebook size={17}/> Facebook Hân ở Úc</a></div>
-        <div><h3>Thông tin</h3><p>Giá và chương trình sale có thể thay đổi theo cửa hàng tại Úc.</p><p>Sản phẩm preorder sẽ được ghi rõ trên từng sản phẩm.</p></div>
+        <div>
+          <h3>Liên hệ</h3>
+
+          <p>
+            <Phone size={16} /> {contactPhone}
+          </p>
+
+          <a
+            href="https://www.facebook.com/profile.php?id=61595110472982"
+            target="_blank"
+            rel="noreferrer"
+          >
+            <Facebook size={17} />
+            Facebook Hân ở Úc
+          </a>
+        </div>
+
       </div>
-      <div className="footerBottom">© {new Date().getFullYear()} Hân ở Úc. Website thuộc quyền sở hữu của Hân ở Úc.</div>
+      <div className="footerBottom">© {new Date().getFullYear()} Website thuộc quyền sở hữu của Hân ở Úc.</div>
     </footer>
 
     {selected&&<div className="modalBackdrop" onMouseDown={e=>{if(e.currentTarget===e.target)setSelected(null)}}>
@@ -300,8 +365,18 @@ export default function Storefront() {
           {selected.is_preorder&&<div className="modalNotice">📦 <strong>Chỉ nhận đặt trước.</strong> {selected.preorder_note||'Vui lòng liên hệ để biết thời gian chốt đơn.'}</div>}
           {saleStatus(selected)==='upcoming'&&<div className="modalNotice">🏷️ <strong>Sale sắp tới.</strong> Giá sale dự kiến {fmt(Number(selected.sale_price))}.</div>}
           <h3>Thông tin sản phẩm</h3>
-          <p>{selected.description||selected.short_description||'Thông tin chi tiết đang được cập nhật.'}</p>
-          <div className="modalActions"><button className="primaryAction" onClick={()=>addToCart(selected)}><ShoppingCart size={20}/> THÊM VÀO GIỎ</button><button className={`favoriteAction ${favorites.includes(selected.id)?'saved':''}`} onClick={()=>toggleFavorite(selected.id)}><Heart size={20} fill={favorites.includes(selected.id)?'currentColor':'none'}/> {favorites.includes(selected.id)?'ĐÃ LƯU':'YÊU THÍCH'}</button></div>
+
+            <div className="productDescription">
+              {selected.description ||
+                selected.short_description ||
+                'Thông tin chi tiết đang được cập nhật.'}
+            </div>
+          <div className="modalActions">
+            <button className="primaryAction" onClick={()=>addToCart(selected)}>
+              <ShoppingCart size={20}/>
+              THÊM VÀO GIỎ
+            </button>
+          </div>
         </div>
       </div>
     </div>}
