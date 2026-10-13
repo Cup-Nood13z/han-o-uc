@@ -26,3 +26,22 @@ export type Product = {
   created_at?: string;
   category?: Category | null;
 };
+
+export type Brand = {
+  id: string;
+  name: string;
+  logo_url: string | null;
+  sort_order: number;
+  is_active: boolean;
+};
+
+export type Promotion = {
+  id: string;
+  title: string;
+  subtitle: string | null;
+  button_text: string | null;
+  image_url: string | null;
+  link_url: string | null;
+  sort_order: number;
+  is_active: boolean;
+};

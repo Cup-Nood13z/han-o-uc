@@ -16,8 +16,6 @@ import {
 import { createClient } from '@/lib/supabase-browser';
 import type { Brand, Category, Product, Promotion } from '@/lib/types';
 
-const [brands, setBrands] = useState<Brand[]>([]);
-const [promotions, setPromotions] = useState<Promotion[]>([]);
 
 const fallbackCategories: Category[] = [
   { id: 'c1', name: 'Thực phẩm chức năng', slug: 'vitamins', emoji: '🍊', sort_order: 1 },
@@ -60,7 +58,9 @@ export default function Storefront() {
   const [products, setProducts] = useState<Product[]>(fallbackProducts);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('all');
-  const [brand, setBrand] = useState('all');
+  
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [selected, setSelected] = useState<Product | null>(null);
   const [usingDemo, setUsingDemo] = useState(true);
   const [cart, setCart] = useState<CartItem[]>([]);
