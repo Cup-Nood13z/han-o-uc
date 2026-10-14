@@ -16,28 +16,14 @@ import {
 import { createClient } from '@/lib/supabase-browser';
 import type { Brand, Category, Product, Promotion } from '@/lib/types';
 
-
-const fallbackCategories: Category[] = [
-  { id: 'c1', name: 'Thực phẩm chức năng', slug: 'vitamins', emoji: '🍊', sort_order: 1 },
-  { id: 'c2', name: 'Chăm sóc da', slug: 'beauty', emoji: '🧴', sort_order: 2 },
-  { id: 'c3', name: 'Chăm sóc tóc', slug: 'hair-care', emoji: '🫧', sort_order: 3 },
-  { id: 'c4', name: 'Chăm sóc cơ thể', slug: 'body-care', emoji: '🌸', sort_order: 4 },
-];
-
-const fallbackProducts: Product[] = [
-  { id:'p1', category_id:'c1', name:'Kẹo Vitamin Úc', brand:"Nature's Way", short_description:'Sản phẩm mẫu để bạn xem giao diện cửa hàng.', description:'Sau khi kết nối Supabase, hãy thay sản phẩm mẫu bằng sản phẩm thật trong trang quản trị.', price:29.95, sale_price:24.95, image_url:null, is_preorder:false, preorder_note:null, sale_start:null, sale_end:null, is_featured:true, is_active:true, category:fallbackCategories[0] },
-  { id:'p2', category_id:'c2', name:'Bộ dưỡng da Glow', brand:'Sukin', short_description:'Sản phẩm mẫu có nhãn đặt trước rõ ràng.', description:'Khách sẽ biết ngay sản phẩm này chỉ nhận đặt trước.', price:48, sale_price:null, image_url:null, is_preorder:true, preorder_note:'Chốt đơn Chủ Nhật', sale_start:null, sale_end:null, is_featured:true, is_active:true, category:fallbackCategories[1] },
-  { id:'p3', category_id:'c3', name:'Mặt nạ phục hồi tóc', brand:'Garnier', short_description:'Giao diện phù hợp cho mỹ phẩm, tóc, sữa và TPCN.', description:'Bạn có thể thêm ảnh, mô tả, giá và ngày sale từ trang quản trị.', price:22.5, sale_price:null, image_url:null, is_preorder:false, preorder_note:null, sale_start:null, sale_end:null, is_featured:false, is_active:true, category:fallbackCategories[2] },
-  { id:'p4', category_id:'c4', name:'Sữa dưỡng thể mùa hè', brand:'QV', short_description:'Sản phẩm mẫu có chương trình sale sắp tới.', description:'Ngày sale được hiển thị rõ ràng để khách dễ theo dõi.', price:19.95, sale_price:14.95, image_url:null, is_preorder:false, preorder_note:null, sale_start:'2026-11-01T00:00:00+10:30', sale_end:'2026-11-09T23:59:00+10:30', is_featured:true, is_active:true, category:fallbackCategories[3] }
-];
-
 type CartItem = { product: Product; quantity: number };
 
-const fmt = (price: number) => new Intl.NumberFormat('vi-VN', {
-  style:'currency',
-  currency: process.env.NEXT_PUBLIC_STORE_CURRENCY || 'AUD',
-  minimumFractionDigits: 2,
-}).format(price);
+const fmt = (price: number) =>
+  new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND',
+    maximumFractionDigits: 0,
+  }).format(price);
 
 function saleStatus(product: Product) {
   if (!product.sale_start || !product.sale_price) return null;
@@ -54,8 +40,9 @@ function productPrice(product: Product) {
 }
 
 export default function Storefront() {
-  const [categories, setCategories] = useState<Category[]>(fallbackCategories);
-  const [products, setProducts] = useState<Product[]>(fallbackProducts);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('all');
   const [brand, setBrand] = useState('all');
@@ -63,7 +50,7 @@ export default function Storefront() {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [selected, setSelected] = useState<Product | null>(null);
-  const [usingDemo, setUsingDemo] = useState(true);
+
   const [cart, setCart] = useState<CartItem[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -71,48 +58,62 @@ export default function Storefront() {
 
   useEffect(() => {
     try {
-      const savedCart = JSON.parse(localStorage.getItem('han-o-uc-cart') || '[]');
-      if (Array.isArray(savedCart)) setCart(savedCart);
+      const savedCart = JSON.parse(
+        localStorage.getItem('han-o-uc-cart') || '[]'
+      );
+
+      if (Array.isArray(savedCart)) {
+        setCart(savedCart);
+      }
     } catch {}
 
     const supabase = createClient();
-    if (!supabase) return;
+
+    if (!supabase) {
+      setLoadingProducts(false);
+      return;
+    }
+
     (async () => {
-      const [
-        { data: cats },
-        { data: prods },
-        { data: brandData },
-        { data: promoData }
-      ] = await Promise.all([
-        supabase
-          .from('categories')
-          .select('*')
-          .order('sort_order'),
+      try {
+        const [
+          { data: cats },
+          { data: prods },
+          { data: brandData },
+          { data: promoData }
+        ] = await Promise.all([
+          supabase
+            .from('categories')
+            .select('*')
+            .order('sort_order'),
 
-        supabase
-          .from('products')
-          .select('*, category:categories(*)')
-          .eq('is_active', true)
-          .order('created_at', { ascending:false }),
+          supabase
+            .from('products')
+            .select('*, category:categories(*)')
+            .eq('is_active', true)
+            .order('created_at', { ascending: false }),
 
-        supabase
-          .from('brands')
-          .select('*')
-          .eq('is_active', true)
-          .order('sort_order'),
+          supabase
+            .from('brands')
+            .select('*')
+            .eq('is_active', true)
+            .order('sort_order'),
 
-        supabase
-          .from('promotions')
-          .select('*')
-          .eq('is_active', true)
-          .order('sort_order')
-      ]);
-      if (cats && prods) {
-        setCategories(cats as Category[]);
-        setProducts(prods as Product[]);
+          supabase
+            .from('promotions')
+            .select('*')
+            .eq('is_active', true)
+            .order('sort_order')
+        ]);
+
+        setCategories((cats || []) as Category[]);
+        setProducts((prods || []) as Product[]);
         setBrands((brandData || []) as Brand[]);
         setPromotions((promoData || []) as Promotion[]);
-        setUsingDemo(false);
+      } catch (error) {
+        console.error('Lỗi tải dữ liệu cửa hàng:', error);
+      } finally {
+        setLoadingProducts(false);
       }
     })();
   }, []);
@@ -321,7 +322,14 @@ export default function Storefront() {
           key={`${category}-${brand}`}
           className="productsGrid productsSlide"
         >
-          {filtered.length === 0 && (
+          {loadingProducts && (
+            <div className="emptyState">
+              <div className="loadingSpinner"></div>
+              <h3>Đang tải sản phẩm...</h3>
+            </div>
+          )}
+
+          {!loadingProducts && filtered.length === 0 && (
             <div className="emptyState">
               <Search size={34}/>
               <h3>Chưa có sản phẩm phù hợp</h3>
@@ -356,7 +364,6 @@ export default function Storefront() {
           })}
         </div>
 
-        {usingDemo&&<div className="demoNotice"><strong>Chế độ xem thử:</strong> Đây là sản phẩm mẫu. Khi Supabase đã kết nối đúng, sản phẩm thật của bạn sẽ tự động hiển thị.</div>}
       </section>
     </main>
 
